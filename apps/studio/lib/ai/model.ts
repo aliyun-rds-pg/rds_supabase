@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI, openai } from '@ai-sdk/openai'
 import { LanguageModel } from 'ai'
 import { checkAwsCredentials, createRoutedBedrock } from './bedrock'
 import {
@@ -99,6 +99,25 @@ export async function getModel({
     if (!hasOpenAIKey) {
       return { error: new Error('OPENAI_API_KEY not available') }
     }
+
+    // If using qwen-plus, route through DashScope compatible endpoint
+    if (chosenModelId === ('qwen-plus' as OpenAIModel)) {
+      const qwenAI = createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        compatibility: 'compatible',
+        maxRetries: 3,
+        maxConcurrency: 5,
+        timeout: 60000,
+      })
+      return {
+        // @ts-expect-error: qwen model id resolved by qwenAI
+        model: qwenAI('qwen-plus'),
+        promptProviderOptions: models[chosenModelId as OpenAIModel]?.promptProviderOptions,
+        providerOptions: providerRegistry.providerOptions,
+      }
+    }
+
     return {
       model: openai(chosenModelId as OpenAIModel),
       promptProviderOptions: models[chosenModelId as OpenAIModel]?.promptProviderOptions,

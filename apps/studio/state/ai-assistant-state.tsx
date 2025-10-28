@@ -17,7 +17,7 @@ export type AssistantMessageType = MessageType & { results?: { [id: string]: any
 
 export type SqlSnippet = string | { label: string; content: string }
 
-export type AssistantModel = 'gpt-5' | 'gpt-5-mini'
+export type AssistantModel = 'qwen-plus'
 
 type ChatSession = {
   id: string
@@ -52,7 +52,7 @@ const INITIAL_AI_ASSISTANT: AiAssistantData = {
   tables: [],
   chats: {},
   activeChatId: undefined,
-  model: 'gpt-5',
+  model: 'qwen-plus',
 }
 
 const DB_NAME = 'ai-assistant-db'
@@ -222,7 +222,7 @@ export const createAiAssistantState = (): AiAssistantState => {
       Object.assign(state, INITIAL_AI_ASSISTANT)
     },
 
-    setModel: (model: AssistantModel) => {
+  setModel: (model: AssistantModel) => {
       state.model = model
     },
 

@@ -130,7 +130,8 @@ export function useProfileNameAndPicture(): {
   const { data: identitiesData, isLoading: isLoadingIdentities } = useProfileIdentitiesQuery()
 
   const username = profile?.username
-  const isGitHubProfile = profile?.auth0_id.startsWith('github')
+  const isGitHubProfile =
+    typeof profile?.auth0_id === 'string' && profile?.auth0_id.startsWith('github')
 
   const gitHubUsername = isGitHubProfile
     ? identitiesData?.identities.find((x) => x.provider === 'github')?.identity_data?.user_name
