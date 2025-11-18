@@ -11,5 +11,6 @@ export const inverseValidBucketNameRegex = /[^A-Za-z0-9_!\-.*'() &$@=;:+,?]/
 
 // only allow s3 safe characters and characters which require special handling for now
 // https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
-export const validObjectKeyRegex = /^(\w|\/|!|-|\.|\*|'|\(|\)| |&|\$|@|=|;|:|\+|,|\?)*$/
-export const inverseValidObjectKeyRegex = /[^A-Za-z0-9_\/!\-.*'() &$@=;:+,?]/
+export const validObjectKeyRegex =
+  /^[\p{L}\p{N}_\/!\-.*'() &$@=;:+,?]*$/u
+export const inverseValidObjectKeyRegex = /[^\p{L}\p{N}_\/!\-.*'() &$@=;:+,?]/u
