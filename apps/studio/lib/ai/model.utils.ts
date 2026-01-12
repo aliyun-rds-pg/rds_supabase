@@ -2,7 +2,7 @@ export type ProviderName = 'bedrock' | 'openai' | 'anthropic'
 
 export type BedrockModel = 'anthropic.claude-3-7-sonnet-20250219-v1:0' | 'openai.gpt-oss-120b-1:0'
 
-export type OpenAIModel = 'qwen-plus'
+export type OpenAIModel = 'qwen-flash'
 
 export type AnthropicModel = 'claude-sonnet-4-20250514' | 'claude-3-5-haiku-20241022'
 
@@ -49,7 +49,7 @@ export const PROVIDERS: ProviderRegistry = {
   },
   openai: {
     models: {
-      'qwen-plus': { default: true },
+      'qwen-flash': { default: true },
     },
     providerOptions: {
       openai: {

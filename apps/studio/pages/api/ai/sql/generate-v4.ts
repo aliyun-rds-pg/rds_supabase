@@ -60,7 +60,7 @@ const requestBodySchema = z.object({
   table: z.string().optional(),
   chatName: z.string().optional(),
   orgSlug: z.string().optional(),
-  model: z.enum(['qwen-plus']).optional(),
+  model: z.enum(['qwen-flash']).optional(),
 })
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse) {
@@ -147,8 +147,8 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       ...(authorization && { Authorization: authorization }),
     },
   })
-  // DashScope 兼容模式目前不支持 OpenAI Responses API，改用 Chat Completions 路径
-  const model = qwenAI.chat('qwen-plus')
+  // DashScope 兼容模式目前不支持 OpenAI Responses API,改用 Chat Completions 路径
+  const model = qwenAI.chat('qwen-flash')
   const promptProviderOptions = undefined
   const providerOptions = undefined
 

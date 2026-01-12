@@ -20,8 +20,8 @@ import {
 } from 'ui'
 
 interface ModelSelectorProps {
-  selectedModel: 'qwen-plus'
-  onSelectModel: (model: 'qwen-plus') => void
+  selectedModel: 'qwen-flash'
+  onSelectModel: (model: 'qwen-flash') => void
 }
 
 export const ModelSelector = ({ selectedModel, onSelectModel }: ModelSelectorProps) => {
@@ -35,7 +35,7 @@ export const ModelSelector = ({ selectedModel, onSelectModel }: ModelSelectorPro
 
   const upgradeHref = `/org/${slug ?? '_'}/billing?panel=subscriptionPlan&source=ai-assistant-model`
 
-  const handleSelectModel = (model: 'qwen-plus') => {
+  const handleSelectModel = (model: 'qwen-flash') => {
     onSelectModel(model)
     setOpen(false)
   }
@@ -56,12 +56,12 @@ export const ModelSelector = ({ selectedModel, onSelectModel }: ModelSelectorPro
           <CommandList_Shadcn_>
             <CommandGroup_Shadcn_>
               <CommandItem_Shadcn_
-                value="qwen-plus"
-                onSelect={() => handleSelectModel('qwen-plus')}
+                value="qwen-flash"
+                onSelect={() => handleSelectModel('qwen-flash')}
                 className="flex justify-between"
               >
-                <span>qwen-plus</span>
-                {selectedModel === 'qwen-plus' && <Check className="h-3.5 w-3.5" />}
+                <span>qwen-flash</span>
+                {selectedModel === 'qwen-flash' && <Check className="h-3.5 w-3.5" />}
               </CommandItem_Shadcn_>
             </CommandGroup_Shadcn_>
           </CommandList_Shadcn_>

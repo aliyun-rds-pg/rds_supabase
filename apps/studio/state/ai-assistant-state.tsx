@@ -17,7 +17,7 @@ export type AssistantMessageType = MessageType & { results?: { [id: string]: any
 
 export type SqlSnippet = string | { label: string; content: string }
 
-export type AssistantModel = 'qwen-plus'
+export type AssistantModel = 'qwen-flash'
 
 type ChatSession = {
   id: string
@@ -52,7 +52,7 @@ const INITIAL_AI_ASSISTANT: AiAssistantData = {
   tables: [],
   chats: {},
   activeChatId: undefined,
-  model: 'qwen-plus',
+  model: 'qwen-flash',
 }
 
 const DB_NAME = 'ai-assistant-db'

@@ -48,7 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse) {
-  const modelName = 'qwen-plus'
+  const modelName = 'qwen-flash'
   const modelResult = await getModel({
     provider: 'openai',
     model: modelName,

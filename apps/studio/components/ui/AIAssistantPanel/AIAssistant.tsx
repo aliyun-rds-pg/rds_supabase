@@ -66,8 +66,8 @@ export const AIAssistant = ({ className }: AIAssistantProps) => {
   const isPaidPlan = selectedOrganization?.plan?.id !== 'free'
 
   const selectedModel = useMemo<AssistantModel>(() => {
-    // 仅使用 qwen-plus
-    const model: AssistantModel = 'qwen-plus'
+    // 仅使用 qwen-flash
+    const model: AssistantModel = 'qwen-flash'
     return model
   }, [snap.model])
 

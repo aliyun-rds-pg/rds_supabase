@@ -100,8 +100,8 @@ export async function getModel({
       return { error: new Error('OPENAI_API_KEY not available') }
     }
 
-    // If using qwen-plus, route through DashScope compatible endpoint
-    if (chosenModelId === ('qwen-plus' as OpenAIModel)) {
+    // If using qwen-flash, route through DashScope compatible endpoint
+    if (chosenModelId === ('qwen-flash' as OpenAIModel)) {
       const qwenAI = createOpenAI({
         apiKey: process.env.OPENAI_API_KEY,
         baseURL: process.env.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
@@ -112,7 +112,7 @@ export async function getModel({
       })
       return {
         // @ts-expect-error: qwen model id resolved by qwenAI
-        model: qwenAI('qwen-plus'),
+        model: qwenAI('qwen-flash'),
         promptProviderOptions: models[chosenModelId as OpenAIModel]?.promptProviderOptions,
         providerOptions: providerRegistry.providerOptions,
       }
