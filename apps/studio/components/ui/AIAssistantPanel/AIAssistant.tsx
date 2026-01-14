@@ -66,15 +66,10 @@ export const AIAssistant = ({ className }: AIAssistantProps) => {
   const isPaidPlan = selectedOrganization?.plan?.id !== 'free'
 
   const selectedModel = useMemo<AssistantModel>(() => {
-    const defaultModel: AssistantModel = isPaidPlan ? 'gpt-5' : 'gpt-5-mini'
-    const model = snap.model ?? defaultModel
-
-    if (!isPaidPlan && model === 'gpt-5') {
-      return 'gpt-5-mini'
-    }
-
+    // 仅使用 qwen-flash
+    const model: AssistantModel = 'qwen-flash'
     return model
-  }, [isPaidPlan, snap.model])
+  }, [snap.model])
 
   const [updatedOptInSinceMCP] = useLocalStorageQuery(
     LOCAL_STORAGE_KEYS.AI_ASSISTANT_MCP_OPT_IN,
@@ -199,36 +194,14 @@ export const AIAssistant = ({ className }: AIAssistantProps) => {
         }
       }
     },
-    transport: new DefaultChatTransport({
-      api: `${BASE_PATH}/api/ai/sql/generate-v4`,
-      async prepareSendMessagesRequest({ messages, ...options }) {
-        const cleanedMessages = prepareMessagesForAPI(messages)
-
-        const headerData = await constructHeaders()
-        const authorizationHeader = headerData.get('Authorization')
-
-        return {
-          ...options,
-          body: {
-            messages: cleanedMessages,
-            aiOptInLevel,
-            projectRef: project?.ref,
-            connectionString: project?.connectionString,
-            schema: currentSchema,
-            table: currentTable?.name,
-            chatName: currentChat,
-            orgSlug: selectedOrganizationRef.current?.slug,
-            model: selectedModel,
-          },
-          headers: { Authorization: authorizationHeader ?? '' },
-        }
-      },
-    }),
-    onError: onErrorChat,
+    transport: undefined as any, // 使用自定义流发送，不走默认传输器
+    onError: undefined,
     onFinish: handleChatFinish,
   })
 
-  const isChatLoading = chatStatus === 'submitted' || chatStatus === 'streaming'
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [streamError, setStreamError] = useState<string | null>(null)
+  const isChatLoading = isStreaming
 
   const deleteMessageFromHere = useCallback(
     (messageId: string) => {
@@ -389,7 +362,113 @@ export const AIAssistant = ({ className }: AIAssistantProps) => {
 
     snap.clearSqlSnippets()
     lastUserMessageRef.current = payload
-    sendMessage(payload)
+    // 自定义发送：直接 fetch generate-v4 并消费 UIStream
+    ;(async () => {
+      try {
+        setStreamError(null)
+        setIsStreaming(true)
+        const headerData = await constructHeaders()
+        const authorizationHeader = headerData.get('Authorization')
+        const cookieHeader = headerData.get('cookie') || headerData.get('Cookie')
+
+        const body = {
+          messages: prepareMessagesForAPI([...(sanitizedMessages ?? []), payload]),
+          aiOptInLevel,
+          projectRef: project?.ref,
+          connectionString: project?.connectionString,
+          schema: currentSchema,
+          table: currentTable?.name,
+          chatName: currentChat,
+          orgSlug: selectedOrganizationRef.current?.slug,
+          model: selectedModel,
+        }
+
+        const res = await fetch(`${BASE_PATH}/api/ai/sql/generate-v4`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authorizationHeader ? { Authorization: authorizationHeader } : {}),
+            ...(cookieHeader ? { cookie: cookieHeader } : {}),
+          },
+          body: JSON.stringify(body),
+        })
+
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let assembled = ''
+        let assistantMsg: MessageType | null = null
+        const baseMessages = [...(sanitizedMessages ?? []), payload]
+
+        if (!reader) { setIsStreaming(false); return }
+
+        // 先渲染用户消息
+        setMessages(baseMessages)
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+
+          const parts = buffer.split('\n\n')
+          // 保留最后一块到下一轮
+          buffer = parts.pop() ?? ''
+          for (const part of parts) {
+            const line = part.trim()
+            if (!line.startsWith('data:')) continue
+            const json = line.slice(5).trim()
+            if (json === '[DONE]') {
+              // 完成：确保最后一次更新并提交
+              if (assistantMsg) {
+                assistantMsg = {
+                  ...assistantMsg,
+                  parts: [{ type: 'text', text: assembled }],
+                } as MessageType
+                setMessages([...baseMessages, assistantMsg])
+                handleChatFinish({ message: assistantMsg })
+              }
+              setIsStreaming(false)
+              setIsStreaming(false)
+              return
+            }
+            try {
+              const evt = JSON.parse(json)
+              if (evt?.type === 'text-start' && !assistantMsg) {
+                assistantMsg = {
+                  id: uuidv4(),
+                  role: 'assistant',
+                  createdAt: new Date(),
+                  parts: [{ type: 'text', text: '' }],
+                } as MessageType
+                setMessages([...baseMessages, assistantMsg])
+              }
+              if (evt?.type === 'text-delta' && typeof evt.delta === 'string') {
+                assembled += evt.delta
+                if (!assistantMsg) {
+                  assistantMsg = {
+                    id: uuidv4(),
+                    role: 'assistant',
+                    createdAt: new Date(),
+                    parts: [{ type: 'text', text: '' }],
+                  } as MessageType
+                }
+                const updated = { ...assistantMsg, parts: [{ type: 'text', text: assembled }] } as MessageType
+                assistantMsg = updated
+                setMessages([...baseMessages, updated])
+              }
+            } catch (e) {
+              // 忽略非 json 块
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Assistant stream error', e)
+        const msg = e instanceof Error ? e.message : String(e)
+        setStreamError(msg)
+      } finally {
+        setIsStreaming(false)
+      }
+    })()
     setValue('')
 
     if (finalContent.includes('Help me to debug')) {

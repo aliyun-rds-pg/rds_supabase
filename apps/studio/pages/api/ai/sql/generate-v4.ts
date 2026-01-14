@@ -1,5 +1,6 @@
 import pgMeta from '@supabase/pg-meta'
 import { convertToModelMessages, type ModelMessage, stepCountIs, streamText } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
 import { source } from 'common-tags'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import z from 'zod'
@@ -49,10 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-const wrapper = (req: NextApiRequest, res: NextApiResponse) =>
-  apiWrapper(req, res, handler, { withAuth: true })
-
-export default wrapper
+export default handler
 
 const requestBodySchema = z.object({
   messages: z.array(z.any()),
@@ -62,16 +60,12 @@ const requestBodySchema = z.object({
   table: z.string().optional(),
   chatName: z.string().optional(),
   orgSlug: z.string().optional(),
-  model: z.enum(['gpt-5', 'gpt-5-mini']).optional(),
+  model: z.enum(['qwen-flash']).optional(),
 })
 
 async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const authorization = req.headers.authorization
   const accessToken = authorization?.replace('Bearer ', '')
-
-  if (IS_PLATFORM && !accessToken) {
-    return res.status(401).json({ error: 'Authorization token is required' })
-  }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
   const { data, error: parseError } = requestBodySchema.safeParse(body)
@@ -140,21 +134,23 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     return msg
   })
 
-  const {
-    model,
-    error: modelError,
-    promptProviderOptions,
-    providerOptions,
-  } = await getModel({
-    provider: 'openai',
-    model: requestedModel ?? 'gpt-5',
-    routingKey: projectRef,
-    isLimited,
+  // Align with v3: construct qwen client here to include request headers
+  const qwenAI = createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.QWEN_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    compatibility: 'compatible',
+    maxRetries: 3,
+    maxConcurrency: 5,
+    timeout: 60000,
+    headers: {
+      ...(req.headers.cookie && { cookie: req.headers.cookie }),
+      ...(authorization && { Authorization: authorization }),
+    },
   })
-
-  if (modelError) {
-    return res.status(500).json({ error: modelError.message })
-  }
+  // DashScope 兼容模式目前不支持 OpenAI Responses API,改用 Chat Completions 路径
+  const model = qwenAI.chat('qwen-flash')
+  const promptProviderOptions = undefined
+  const providerOptions = undefined
 
   try {
     // Get a list of all schemas to add to context
@@ -235,24 +231,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       abortSignal: abortController.signal,
     })
 
-    result.pipeUIMessageStreamToResponse(res, {
-      sendReasoning: true,
-      onError: (error) => {
-        if (error == null) {
-          return 'unknown error'
-        }
-
-        if (typeof error === 'string') {
-          return error
-        }
-
-        if (error instanceof Error) {
-          return error.message
-        }
-
-        return JSON.stringify(error)
-      },
-    })
+    result.pipeUIMessageStreamToResponse(res, { sendReasoning: true })
   } catch (error) {
     console.error('Error in handlePost:', error)
     if (error instanceof Error) {
