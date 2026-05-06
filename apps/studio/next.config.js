@@ -411,14 +411,23 @@ const nextConfig = {
     ]
   },
   async headers() {
+    const iframeAncestors = process.env.STUDIO_IFRAME_ANCESTORS
+    const allowIframeEmbedding = !!iframeAncestors && iframeAncestors.trim().length > 0
+
     return [
       {
         source: '/(.*?)',
         headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
+          // Only set X-Frame-Options when iframe embedding is not allowed
+          // When allowed, CSP frame-ancestors takes precedence
+          ...(allowIframeEmbedding
+            ? []
+            : [
+                {
+                  key: 'X-Frame-Options',
+                  value: 'DENY',
+                },
+              ]),
           {
             key: 'X-Content-Type-Options',
             value: 'no-sniff',
@@ -433,7 +442,11 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              process.env.NEXT_PUBLIC_IS_PLATFORM === 'true' ? getCSP() : "frame-ancestors 'none';",
+              process.env.NEXT_PUBLIC_IS_PLATFORM === 'true'
+                ? getCSP()
+                : allowIframeEmbedding
+                  ? `frame-ancestors 'self' ${iframeAncestors.trim()};`
+                  : "frame-ancestors 'none';",
           },
           {
             key: 'Referrer-Policy',

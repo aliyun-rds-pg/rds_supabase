@@ -190,7 +190,9 @@ module.exports.getCSP = function getCSP() {
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    `frame-ancestors 'none'`,
+    process.env.STUDIO_IFRAME_ANCESTORS && process.env.STUDIO_IFRAME_ANCESTORS.trim().length > 0
+      ? `frame-ancestors 'self' ${process.env.STUDIO_IFRAME_ANCESTORS.trim()}`
+      : `frame-ancestors 'none'`,
     `block-all-mixed-content`,
     ...(process.env.NEXT_PUBLIC_IS_PLATFORM === 'true' &&
     process.env.NEXT_PUBLIC_ENVIRONMENT === 'prod'
